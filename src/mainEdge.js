@@ -10,50 +10,51 @@ const EDGE_DETECTION_KERNEL = [
   [-1, -1, -1],
 ];
 
-//Arquivos de entrada e destino
-const INPUT_FILE = "../assets/imgs/italy.png"; // Coloque uma imagem PNG aqui
-const OUTPUT_FILE = "../outputs/output_bordas.png"; //Diretório de Saída
+// Arquivos de entrada e destino
+const INPUT_FILE = "teste.png";
+const OUTPUT_FILE = "imgs/saida.png";
 
-fs.createReadStream(INPUT_FILE)
-  .pipe(new PNG())
-  .on("parsed", function () {
-    console.log(`\nImagem carregada: ${INPUT_FILE}.`);
-    console.log(`Dimensões: ${this.width}x${this.height} pixels.`);
+// Leitura síncrona da imagem
+const data = fs.readFileSync(INPUT_FILE);
+const png = PNG.sync.read(data);
 
-    // Criar buffer para a nova imagem (evita leitura suja)
-    const outputBuffer = Buffer.alloc(this.data.length);
-    this.data.copy(outputBuffer); // Copia dados iniciais (alpha, etc)
+console.log(`\nImagem carregada: ${INPUT_FILE}.`);
+console.log(`Dimensões: ${png.width}x${png.height} pixels.`);
 
-    console.log("Iniciando processamento...");
+// Criar buffer para a nova imagem
+const outputBuffer = Buffer.alloc(png.data.length);
+png.data.copy(outputBuffer);
 
-    // --- INÍCIO DA MEDIÇÃO---
-    const start = performance.now();
+console.log("Iniciando processamento...");
 
-    // 1. Aplicar Detecção de Bordas
-    applyConvolution(
-      this.data,
-      outputBuffer,
-      this.width,
-      this.height,
-      EDGE_DETECTION_KERNEL,
-      1
-    );
+// --- INÍCIO DA MEDIÇÃO ---
+const start = performance.now();
 
-    const end = performance.now();
-    // --- FIM DA MEDIÇÃO ---
+// Aplicar Detecção de Bordas
+applyConvolution(
+  png.data,
+  outputBuffer,
+  png.width,
+  png.height,
+  EDGE_DETECTION_KERNEL,
+  1
+);
 
-    const duration = (end - start).toFixed(4);
+const end = performance.now();
+// --- FIM DA MEDIÇÃO ---
 
-    console.log(`--------------------------------------------------`);
-    console.log(`Processamento Concluído.`);
-    console.log(`Operação: Detecção de Bordas (Passa Alta)`);
-    console.log(`Modo: SEQUENCIAL`);
-    console.log(`Tempo de Execução: ${duration} ms`);
-    console.log(`--------------------------------------------------`);
+const duration = (end - start).toFixed(4);
 
-    console.log(`Imagem resultante em: ${OUTPUT_FILE}\n`);
+console.log(`--------------------------------------------------`);
+console.log(`Processamento Concluído.`);
+console.log(`Operação: Detecção de Bordas (Passa Alta)`);
+console.log(`Modo: SEQUENCIAL`);
+console.log(`Tempo de Execução: ${duration} ms`);
+console.log(`--------------------------------------------------`);
 
-    // Salvar resultado
-    this.data = outputBuffer;
-    this.pack().pipe(fs.createWriteStream(OUTPUT_FILE));
-  });
+console.log(`Imagem resultante em: ${OUTPUT_FILE}\n`);
+
+// Salvar resultado
+png.data = outputBuffer;
+const buffer = PNG.sync.write(png);
+fs.writeFileSync(OUTPUT_FILE, buffer);
