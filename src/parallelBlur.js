@@ -1,4 +1,4 @@
-// parallelBlur.js
+// src/parallelBlur.js
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -6,74 +6,83 @@ const { PNG } = require("pngjs");
 const { performance } = require("perf_hooks");
 const { Worker } = require("worker_threads");
 
+// Importa as métricas
 const {
   calculateSpeedup,
   calculateEfficiency,
   calculateOverhead,
-  report,
 } = require("./functions/metrics");
 
 const { generateGaussianKernel } = require("./functions/generateGaussKernel");
 
 // ================= CONFIGURAÇÕES =================
 
-// Tamanho do kernel e sigma do Gaussiano (igual ao seu sequencial ou maior)
+// Configurações do Blur
 const kernelSize = 15;
 const sigma = 5;
 const GAUSS_KERNEL = generateGaussianKernel(kernelSize, sigma);
-const KERNEL_DIVISOR = 1; // já está normalizado dentro da função
+const KERNEL_DIVISOR = 1;
 
-// Defina a imagem de entrada e saída
-const INPUT_FILE = "imgs/inputs/teste.png";
-const OUTPUT_FILE = "imgs/outputs/saidaParalela.png";
+// Caminhos dos arquivos
+const INPUT_FILE = path.join(__dirname, "imgs/inputs/teste.png");
+const OUTPUT_FILE = path.join(__dirname, "imgs/outputs/saidaParalela.png");
+const WORKER_PATH = path.join(__dirname, "workers", "ConvolutionWorker.js");
 
-// Número de workers (pode usar todos os núcleos ou fixar, ex: 4)
-const NUM_WORKERS = os.cpus().length; // ou um valor fixo, tipo 4
+// Número de workers
+const NUM_WORKERS = os.cpus().length;
 
-// --- IMPORTANTE: Coloque aqui o tempo (ms) que você anotou da versão Sequencial ---
-const TEMPO_SEQUENCIAL_MEDIDO = 1000; // Exemplo: troque por 4500.50 ou o valor real
+// Valor fixo apenas para teste manual (o runner ignora isso)
+const TEMPO_SEQUENCIAL_MANUAL = 1000;
 
-function run() {
-  fs.createReadStream(INPUT_FILE)
-    .pipe(new PNG())
-    .on("parsed", function () {
-      const width = this.width;
-      const height = this.height;
+/**
+ * Função principal encapsulada para retornar uma Promise.
+ * @param {number} sequentialTime - Tempo sequencial para comparação (opcional)
+ * @param {boolean} silent - Se true, esconde logs (para o runner)
+ */
+function runParallelBlur(sequentialTime = 0, silent = false) {
+  return new Promise((resolve, reject) => {
+    // Verificação básica
+    if (!fs.existsSync(INPUT_FILE)) {
+      return reject(`Arquivo de entrada não encontrado: ${INPUT_FILE}`);
+    }
 
-      console.log(`\nImagem carregada: ${INPUT_FILE}.`);
-      console.log(`Dimensões: ${width}x${height} pixels.`);
-      console.log(`Usando ${NUM_WORKERS} workers para processamento paralelo.`);
+    fs.createReadStream(INPUT_FILE)
+      .pipe(new PNG())
+      .on("parsed", function () {
+        const width = this.width;
+        const height = this.height;
 
-      // Buffer de saída final (para a imagem inteira)
-      const outputBuffer = Buffer.alloc(this.data.length);
-
-      // Guardamos o alpha inicialmente (opcional, mas ajuda)
-      this.data.copy(outputBuffer);
-
-      // Medição de tempo
-      const start = performance.now();
-
-      // Quebrar a imagem em faixas de linhas
-      const linesPerWorker = Math.ceil(height / NUM_WORKERS);
-
-      let finishedWorkers = 0;
-
-      for (let i = 0; i < NUM_WORKERS; i++) {
-        const startY = i * linesPerWorker;
-        let endY = startY + linesPerWorker;
-        if (endY > height) endY = height;
-
-        if (startY >= height) {
-          // Não cria worker se a imagem for menor que o número de workers
-          finishedWorkers++;
-          continue;
+        if (!silent) {
+          console.log(`\n[Paralelo] Imagem carregada: ${width}x${height}`);
+          console.log(`[Paralelo] Usando ${NUM_WORKERS} workers.`);
+          console.log(
+            `[Config] Blur Kernel: ${kernelSize}x${kernelSize}, Sigma: ${sigma}`
+          );
         }
 
-        const worker = new Worker(
-          path.resolve(__dirname, "workers", "convolutionWorker.js"),
-          {
+        const outputBuffer = Buffer.alloc(this.data.length);
+        this.data.copy(outputBuffer);
+
+        const start = performance.now();
+
+        // Divisão de tarefas
+        const linesPerWorker = Math.ceil(height / NUM_WORKERS);
+        let finishedWorkers = 0;
+
+        for (let i = 0; i < NUM_WORKERS; i++) {
+          const startY = i * linesPerWorker;
+          let endY = startY + linesPerWorker;
+          if (endY > height) endY = height;
+
+          if (startY >= height) {
+            finishedWorkers++;
+            if (finishedWorkers === NUM_WORKERS) resolve(0);
+            continue;
+          }
+
+          const worker = new Worker(WORKER_PATH, {
             workerData: {
-              src: this.data, // Buffer com a imagem original
+              src: this.data,
               width,
               height,
               kernel: GAUSS_KERNEL,
@@ -81,64 +90,75 @@ function run() {
               startY,
               endY,
             },
-          }
-        );
+          });
 
-        worker.on("message", ({ startY, endY, chunk }) => {
-          // Copiar o chunk (faixa de linhas) para o outputBuffer final
-          const lines = endY - startY;
-          const bytesPerLine = width * 4;
-
-          for (let y = 0; y < lines; y++) {
-            const srcOffset = y * bytesPerLine;
-            const dstOffset = (startY + y) * width * 4;
+          worker.on("message", ({ startY, endY, chunk }) => {
+            // Copia o chunk recebido para o buffer final
+            const lines = endY - startY;
+            const bytesPerLine = width * 4;
             const chunkBuf = Buffer.from(chunk);
-            chunkBuf.copy(
-              outputBuffer,
-              dstOffset,
-              srcOffset,
-              srcOffset + bytesPerLine
-            );
-          }
+            const dstOffset = startY * bytesPerLine;
 
-          finishedWorkers++;
+            chunkBuf.copy(outputBuffer, dstOffset);
 
-          if (finishedWorkers === NUM_WORKERS) {
-            const end = performance.now();
-            const duration = (end - start).toFixed(4);
+            finishedWorkers++;
 
-            console.log(`--------------------------------------------------`);
-            console.log(`Processamento Concluído.`);
-            console.log(`Operação: Blur (Desfoque)`);
-            console.log(`Modo: PARALELO (Worker Threads)`);
-            console.log(`Workers: ${NUM_WORKERS}`);
-            console.log(`Tempo de Execução: ${duration} ms`);
+            if (finishedWorkers === NUM_WORKERS) {
+              const end = performance.now();
+              const duration = end - start;
 
-            // Cálculo das métricas para o relatório
-            if (TEMPO_SEQUENCIAL_MEDIDO > 0) {
-              report(TEMPO_SEQUENCIAL_MEDIDO, duration, NUM_WORKERS);
+              // Logs apenas se não for silencioso
+              if (!silent) {
+                console.log(
+                  `--------------------------------------------------`
+                );
+                console.log(`Processamento Concluído (Blur Paralelo).`);
+                console.log(`Tempo de Execução: ${duration.toFixed(4)} ms`);
+
+                if (sequentialTime > 0) {
+                  const speedup = calculateSpeedup(sequentialTime, duration);
+                  const efficiency = calculateEfficiency(speedup, NUM_WORKERS);
+                  const overhead = calculateOverhead(
+                    sequentialTime,
+                    duration,
+                    NUM_WORKERS
+                  );
+
+                  console.log(`--- RELATÓRIO DE PERFORMANCE ---`);
+                  console.log(`Speedup:    ${speedup.toFixed(2)}x`);
+                  console.log(`Eficiência: ${(efficiency * 100).toFixed(2)}%`);
+                  console.log(`Overhead:   ${overhead.toFixed(2)} ms`);
+                }
+                console.log(
+                  `--------------------------------------------------`
+                );
+                console.log(`Imagem salva em: ${OUTPUT_FILE}\n`);
+              }
+
+              // Salvar imagem
+              this.data = outputBuffer;
+              this.pack().pipe(fs.createWriteStream(OUTPUT_FILE));
+
+              // RESOLVE A PROMISE COM O TEMPO!
+              resolve(duration);
             }
+          });
 
-            console.log(`--------------------------------------------------`);
-            console.log(`Imagem resultante em: ${OUTPUT_FILE}\n`);
-
-            // Salvar imagem
-            this.data = outputBuffer;
-            this.pack().pipe(fs.createWriteStream(OUTPUT_FILE));
-          }
-        });
-
-        worker.on("error", (err) => {
-          console.error(`Erro no worker ${i}:`, err);
-        });
-
-        worker.on("exit", (code) => {
-          if (code !== 0) {
-            console.error(`Worker ${i} saiu com código ${code}`);
-          }
-        });
-      }
-    });
+          worker.on("error", (err) => reject(err));
+          worker.on("exit", (code) => {
+            if (code !== 0)
+              reject(new Error(`Worker ${i} parou com código ${code}`));
+          });
+        }
+      });
+  });
 }
 
-run();
+// 1. Execução direta (node src/parallelBlur.js)
+if (require.main === module) {
+  runParallelBlur(TEMPO_SEQUENCIAL_MANUAL, false).catch((err) =>
+    console.error(err)
+  );
+}
+
+module.exports = { runParallelBlur };
