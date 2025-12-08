@@ -17,8 +17,8 @@ const GAUSS_KERNEL = generateGaussianKernel(kernelSize, sigma);
 const KERNEL_DIVISOR = 1; // já está normalizado dentro da função
 
 // Defina a imagem de entrada e saída
-const INPUT_FILE = "teste.png";
-const OUTPUT_FILE = "imgs/saidaParalela.png";
+const INPUT_FILE = "imgs/inputs/teste.png";
+const OUTPUT_FILE = "imgs/outputs/saidaParalela.png";
 
 // Número de workers (pode usar todos os núcleos ou fixar, ex: 4)
 const NUM_WORKERS = os.cpus().length; // ou um valor fixo, tipo 4
@@ -81,9 +81,14 @@ function run() {
 
           for (let y = 0; y < lines; y++) {
             const srcOffset = y * bytesPerLine;
-            const dstOffset = ( (startY + y) * width ) * 4;
+            const dstOffset = (startY + y) * width * 4;
             const chunkBuf = Buffer.from(chunk);
-            chunkBuf.copy(outputBuffer, dstOffset, srcOffset, srcOffset + bytesPerLine);
+            chunkBuf.copy(
+              outputBuffer,
+              dstOffset,
+              srcOffset,
+              srcOffset + bytesPerLine
+            );
           }
 
           finishedWorkers++;

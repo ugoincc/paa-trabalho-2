@@ -11,8 +11,8 @@ const EDGE_DETECTION_KERNEL = [
 ];
 
 // Arquivos de entrada e destino
-const INPUT_FILE = "teste.png";
-const OUTPUT_FILE = "imgs/saida.png";
+const INPUT_FILE = "imgs/inputs/teste.png";
+const OUTPUT_FILE = "imgs/outputs/saida.png";
 
 // Leitura síncrona da imagem
 const data = fs.readFileSync(INPUT_FILE);

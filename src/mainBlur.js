@@ -11,8 +11,8 @@ const sigma = 5; // Sigma controla a suavidade da curva
 const BIG_BLUR_KERNEL = generateGaussianKernel(kernelSize, sigma);
 
 //Arquivos de entrada e destino
-const INPUT_FILE = "teste.png"; // Coloque uma imagem PNG aqui
-const OUTPUT_FILE = "imgs/saidaBlurSequencial.png"; //Diretório de Saída
+const INPUT_FILE = "imgs/inputs/teste.png"; // Coloque uma imagem PNG aqui
+const OUTPUT_FILE = "imgs/outputs/saidaBlurSequencial.png"; //Diretório de Saída
 
 fs.createReadStream(INPUT_FILE)
   .pipe(new PNG())
