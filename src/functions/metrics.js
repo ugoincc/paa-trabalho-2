@@ -38,9 +38,30 @@ function calculateAmdahl(p, numProcessors) {
   return 1 / (1 - p + p / numProcessors);
 }
 
+function report(TEMPO_SEQUENCIAL_MEDIDO, duration, NUM_WORKERS) {
+  const speedup = calculateSpeedup(TEMPO_SEQUENCIAL_MEDIDO, duration);
+  const efficiency = calculateEfficiency(speedup, NUM_WORKERS);
+  const overhead = calculateOverhead(
+    TEMPO_SEQUENCIAL_MEDIDO,
+    duration,
+    NUM_WORKERS
+  );
+
+  console.log(`\n--- RELATÓRIO DE PERFORMANCE ---`);
+  console.log(
+    `Tempo Sequencial Base: ${TEMPO_SEQUENCIAL_MEDIDO.toFixed(4)} ms`
+  );
+  console.log(`Speedup (Aceleração):  ${speedup.toFixed(2)}x`);
+  console.log(`Eficiência:            ${(efficiency * 100).toFixed(2)}%`);
+  console.log(
+    `Overhead Estimado:     ${overhead.toFixed(2)} ms (Custo extra CPU)`
+  );
+}
+
 module.exports = {
   calculateSpeedup,
   calculateEfficiency,
   calculateOverhead,
   calculateAmdahl,
+  report,
 };

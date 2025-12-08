@@ -6,11 +6,11 @@ const { PNG } = require("pngjs");
 const { performance } = require("perf_hooks");
 const { Worker } = require("worker_threads");
 
-// Importa as métricas recém-criadas
 const {
   calculateSpeedup,
   calculateEfficiency,
   calculateOverhead,
+  report,
 } = require("./functions/metrics");
 
 // ================= CONFIGURAÇÕES =================
@@ -100,37 +100,9 @@ function run() {
 
             // Cálculo das métricas para o relatório
             if (TEMPO_SEQUENCIAL_MEDIDO > 0) {
-              const speedup = calculateSpeedup(
-                TEMPO_SEQUENCIAL_MEDIDO,
-                duration
-              );
-              const efficiency = calculateEfficiency(speedup, NUM_WORKERS);
-              const overhead = calculateOverhead(
-                TEMPO_SEQUENCIAL_MEDIDO,
-                duration,
-                NUM_WORKERS
-              );
-
-              console.log(`\n--- RELATÓRIO DE PERFORMANCE ---`);
-              console.log(
-                `Tempo Sequencial Base: ${TEMPO_SEQUENCIAL_MEDIDO.toFixed(
-                  4
-                )} ms`
-              );
-              console.log(`Speedup (Aceleração):  ${speedup.toFixed(2)}x`);
-              console.log(
-                `Eficiência:            ${(efficiency * 100).toFixed(2)}%`
-              );
-              console.log(
-                `Overhead Estimado:     ${overhead.toFixed(
-                  2
-                )} ms (Custo extra CPU)`
-              );
-            } else {
-              console.log(
-                `\n[DICA] Preencha 'TEMPO_SEQUENCIAL_MEDIDO' no código para ver o Speedup.`
-              );
+              report(TEMPO_SEQUENCIAL_MEDIDO, duration, NUM_WORKERS);
             }
+
             console.log(`--------------------------------------------------`);
             console.log(`Imagem salva em: ${OUTPUT_FILE}\n`);
 

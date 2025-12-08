@@ -6,6 +6,13 @@ const { PNG } = require("pngjs");
 const { performance } = require("perf_hooks");
 const { Worker } = require("worker_threads");
 
+const {
+  calculateSpeedup,
+  calculateEfficiency,
+  calculateOverhead,
+  report,
+} = require("./functions/metrics");
+
 const { generateGaussianKernel } = require("./functions/generateGaussKernel");
 
 // ================= CONFIGURAÇÕES =================
@@ -22,6 +29,9 @@ const OUTPUT_FILE = "imgs/outputs/saidaParalela.png";
 
 // Número de workers (pode usar todos os núcleos ou fixar, ex: 4)
 const NUM_WORKERS = os.cpus().length; // ou um valor fixo, tipo 4
+
+// --- IMPORTANTE: Coloque aqui o tempo (ms) que você anotou da versão Sequencial ---
+const TEMPO_SEQUENCIAL_MEDIDO = 1000; // Exemplo: troque por 4500.50 ou o valor real
 
 function run() {
   fs.createReadStream(INPUT_FILE)
@@ -103,6 +113,12 @@ function run() {
             console.log(`Modo: PARALELO (Worker Threads)`);
             console.log(`Workers: ${NUM_WORKERS}`);
             console.log(`Tempo de Execução: ${duration} ms`);
+
+            // Cálculo das métricas para o relatório
+            if (TEMPO_SEQUENCIAL_MEDIDO > 0) {
+              report(TEMPO_SEQUENCIAL_MEDIDO, duration, NUM_WORKERS);
+            }
+
             console.log(`--------------------------------------------------`);
             console.log(`Imagem resultante em: ${OUTPUT_FILE}\n`);
 
