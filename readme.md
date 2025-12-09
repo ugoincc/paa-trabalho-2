@@ -18,3 +18,12 @@ Aumentar o kernel aumenta drasticamente o número de cálculos.
 Kernel 5x5 = 25 multiplicações por pixel.
 
 Kernel 21x21 = 441 multiplicações por pixel.
+
+### 🐳 Docker
+Obs: o docker hub precisa está aberto, você vai acompanha o processamento atraves do terminal do container master.
+
+- Iniciar o docker: docker-compose up -d --build
+  
+Você pode mudar a operação entre EDGER e BLUR no arquivo httpMaster, se os containes já foram iniciados apenas reinicie o master:
+
+- docker-compose restart master
