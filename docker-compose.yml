@@ -1,0 +1,39 @@
+services:
+  # === NÓS TRABALHADORES (SERVIDORES) ===
+  worker1:
+    build: .
+    command: node src/distributed/httpWorker.js
+    ports:
+      - "3001:3000" # Mapeia porta local para teste se precisar
+    networks:
+      - cluster-img
+
+  worker2:
+    build: .
+    command: node src/distributed/httpWorker.js
+    networks:
+      - cluster-img
+
+  worker3:
+    build: .
+    command: node src/distributed/httpWorker.js
+    networks:
+      - cluster-img
+
+  # === NÓ MESTRE (CLIENTE) ===
+  master:
+    build: .
+    command: node src/distributed/httpMaster.js
+    # Mapeia volumes para salvar a imagem de saída na sua pasta real
+    volumes:
+      - .:/app
+    depends_on:
+      - worker1
+      - worker2
+      - worker3
+    networks:
+      - cluster-img
+
+networks:
+  cluster-img:
+    driver: bridge
