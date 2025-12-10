@@ -27,3 +27,8 @@ Obs: o docker hub precisa está aberto, você vai acompanha o processamento atra
 Você pode mudar a operação entre EDGER e BLUR no arquivo httpMaster, se os containes já foram iniciados apenas reinicie o master:
 
 - docker-compose restart master
+
+Comando para executar os teste de medidas
+
+- docker-compose run --rm master node src/distributed/benchmarkRunner.js
+
