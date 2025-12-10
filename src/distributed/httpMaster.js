@@ -7,47 +7,25 @@ const { performance } = require("perf_hooks");
 const { generateGaussianKernel } = require("../functions/generateGaussKernel");
 
 // =================================================================
-// 🎛️ ÁREA DE CONFIGURAÇÃO (Mude aqui!)
+// 🎛️ ÁREA DE CONFIGURAÇÃO
 // =================================================================
-
-// Escolha o modo: 'BLUR' ou 'EDGE'
 const MODE = 'EDGE'; 
-
-// Arquivo de entrada (Pode ser o copo.png ou outro)
 const INPUT_FILENAME = "copo.png"; 
-
 // =================================================================
 
-// Definição dos Kernels
-let KERNEL;
-let OUTPUT_SUFFIX;
-
+// Configuração dos Kernels e Sufixos
+let KERNEL, OUTPUT_SUFFIX;
 if (MODE === 'BLUR') {
-    console.log("--> Modo Selecionado: BLUR (Desfoque Gaussiano)");
-    // Configuração do Blur (15x15, Sigma 5)
     KERNEL = generateGaussianKernel(15, 5);
     OUTPUT_SUFFIX = "Blur";
-} 
-else if (MODE === 'EDGE') {
-    console.log("--> Modo Selecionado: EDGE (Detecção de Bordas)");
-    // Configuração de Borda (Laplaciano)
-    KERNEL = [
-        [-1, -1, -1],
-        [-1,  8, -1],
-        [-1, -1, -1]
-    ];
+} else if (MODE === 'EDGE') {
+    KERNEL = [[-1, -1, -1], [-1,  8, -1], [-1, -1, -1]];
     OUTPUT_SUFFIX = "Edge";
-} 
-else {
-    console.error("Modo inválido! Use 'BLUR' ou 'EDGE'.");
-    process.exit(1);
-}
+} else { process.exit(1); }
 
-// Caminhos Automáticos
 const INPUT_FILE = path.join(__dirname, `../imgs/inputs/${INPUT_FILENAME}`);
 const OUTPUT_FILE = path.join(__dirname, `../imgs/outputs/saidaDistribuida_${OUTPUT_SUFFIX}.png`);
 
-// Lista de Workers (Docker)
 const WORKERS = [
   "http://worker1:3000/processar",
   "http://worker2:3000/processar",
@@ -55,8 +33,7 @@ const WORKERS = [
 ];
 
 /**
- * 🛡️ Função de Resiliência: Envia tarefa com tentativas (Retry) e Failover.
- * Se o worker preferencial falhar, tenta o próximo da lista.
+ * Envia tarefa com Retry e retorna DADOS COMPLETOS (imagem + métricas)
  */
 async function sendTaskWithRetry(payload, preferredWorkerIndex, totalRetries = 3) {
     let attempts = 0;
@@ -64,56 +41,46 @@ async function sendTaskWithRetry(payload, preferredWorkerIndex, totalRetries = 3
 
     while (attempts < totalRetries) {
         const workerUrl = WORKERS[currentWorkerIndex];
-        
         try {
-            // console.log(`Tentativa ${attempts + 1}: Enviando para ${workerUrl}...`);
-            // Timeout de 5s para não ficar esperando eternamente um worker morto
-            const response = await axios.post(workerUrl, payload, { timeout: 5000 }); 
+            // Medimos apenas a viagem HTTP (Ida + Processamento Remoto + Volta)
+            const reqStart = performance.now();
+            const response = await axios.post(workerUrl, payload, { timeout: 10000 }); 
+            const reqEnd = performance.now();
             
-            if (!response.data.image) throw new Error("Worker retornou dados vazios");
+            if (!response.data.image) throw new Error("Dados vazios");
             
-            return response.data.image; // SUCESSO!
+            return {
+                data: response.data,
+                roundTripTime: reqEnd - reqStart, 
+                workerUrl: workerUrl
+            };
 
         } catch (err) {
             console.error(`⚠️  Falha no ${workerUrl}: ${err.code || err.message}`);
             attempts++;
-            
-            // Lógica de Failover (Round Robin): Pega o próximo worker da lista
             currentWorkerIndex = (currentWorkerIndex + 1) % WORKERS.length;
-            
-            if (attempts < totalRetries) {
-                console.log(`♻️  Redirecionando tarefa para o próximo: ${WORKERS[currentWorkerIndex]}...`);
-            }
+            if (attempts < totalRetries) console.log(`♻️  Redirecionando...`);
         }
     }
-    
-    throw new Error(`FALHA TOTAL: Não foi possível processar esta fatia após ${totalRetries} tentativas.`);
+    throw new Error(`FALHA TOTAL após ${totalRetries} tentativas.`);
 }
 
 async function runDistributed() {
-    console.log("--> Aguardando workers iniciarem (5s)...");
+    console.log("--> Aguardando workers (5s)...");
     await new Promise(r => setTimeout(r, 5000));
 
-    if (!fs.existsSync(INPUT_FILE)) {
-        console.error(`ERRO: Arquivo não encontrado: ${INPUT_FILE}`);
-        return;
-    }
+    if (!fs.existsSync(INPUT_FILE)) return console.error("Arquivo não encontrado");
 
     const data = fs.readFileSync(INPUT_FILE);
     const png = PNG.sync.read(data);
     const { width, height } = png;
-
-    console.log(`\n[Mestre] Processando: ${INPUT_FILENAME} (${width}x${height})`);
-    console.log(`[Config] Workers: ${WORKERS.length} | Modo: ${MODE}`);
-
-    // Buffer de saída (Cópia do original para manter Alpha/Transparência)
     const outputBuffer = Buffer.alloc(png.data.length);
     png.data.copy(outputBuffer);
-
-    // Se for EDGE, pinta o fundo de preto para destacar as bordas brancas
     if (MODE === 'EDGE') outputBuffer.fill(0);
 
-    const start = performance.now();
+    console.log(`\n[Mestre] Processando ${INPUT_FILENAME} (${width}x${height})`);
+    
+    const startTotal = performance.now();
 
     const linesPerWorker = Math.ceil(height / WORKERS.length);
     const promises = [];
@@ -124,48 +91,67 @@ async function runDistributed() {
         if (endY > height) endY = height;
         if (startY >= height) continue;
 
-        const sliceHeight = endY - startY;
-        const startOffset = startY * width * 4;
-        const endOffset = endY * width * 4;
+        // --- MEDIÇÃO: PREPARAÇÃO DO MESTRE ---
+        // Quanto tempo o Mestre gasta cortando e serializando para Base64?
+        const tPrepStart = performance.now();
 
-        // Fatia
-        const sliceBuffer = Buffer.alloc(endOffset - startOffset);
-        // Copia dados da imagem original para a fatia
-        png.data.copy(sliceBuffer, 0, startOffset, endOffset);
+        const sliceBuffer = Buffer.alloc((endY - startY) * width * 4);
+        png.data.copy(sliceBuffer, 0, (startY * width * 4), (endY * width * 4));
+        const base64Slice = sliceBuffer.toString("base64"); // Operação pesada!
+
+        const tPrepEnd = performance.now();
+        const masterPrepTime = tPrepEnd - tPrepStart;
+        // -------------------------------------
 
         const payload = {
-            image: sliceBuffer.toString("base64"),
+            image: base64Slice,
             width: width,
-            height: sliceHeight,
-            kernel: KERNEL,
-            kernelDivisor: 1
+            height: endY - startY,
+            kernel: KERNEL
         };
 
-        console.log(`Enviando fatia ${i+1} (inicialmente para Worker ${i+1})...`);
-
-        // AQUI USAMOS A NOVA FUNÇÃO COM RETRY
         const p = sendTaskWithRetry(payload, i)
-            .then(base64Result => {
-                const chunk = Buffer.from(base64Result, "base64");
-                // Escreve o resultado no buffer final
-                chunk.copy(outputBuffer, startOffset); 
-                console.log(`✅ Fatia ${i+1} concluída!`);
+            .then(({ data, roundTripTime, workerUrl }) => {
+                
+                // --- MEDIÇÃO: FINALIZAÇÃO DO MESTRE ---
+                // Quanto tempo o Mestre gasta decodificando e colando na imagem?
+                const tPostStart = performance.now();
+                
+                const chunk = Buffer.from(data.image, "base64"); // Operação pesada!
+                chunk.copy(outputBuffer, (startY * width * 4));
+                
+                const tPostEnd = performance.now();
+                const masterPostTime = tPostEnd - tPostStart;
+                // --------------------------------------
+
+                // Cálculos Finais
+                const workerCpuTime = data.metrics.processTime; 
+                const masterCpuTime = masterPrepTime + masterPostTime;
+                
+                // Overhead de Rede Pura = Tempo da Viagem - Tempo que o Worker trabalhou
+                // Nota: Isso inclui latência de rede + tempo do JSON.stringify interno do axios
+                const networkOverhead = roundTripTime - workerCpuTime;
+
+                console.log(`\n✅ Fatia ${i+1} (${workerUrl}):`);
+                console.log(`   - [Mestre] CPU (Prep+Montagem): ${masterCpuTime.toFixed(2)} ms`);
+                console.log(`   - [Rede] Latência/Transferência: ${networkOverhead.toFixed(2)} ms`);
+                console.log(`   - [Worker] CPU (Processamento):  ${workerCpuTime.toFixed(2)} ms`);
+                console.log(`   -------------------------------------------`);
+                console.log(`   > Tempo Total da Fatia: ${(masterCpuTime + roundTripTime).toFixed(2)} ms`);
             })
-            .catch(err => {
-                console.error(`❌ ERRO CRÍTICO NA FATIA ${i+1}: Imagem final ficará incompleta.`);
-            });
+            .catch(console.error);
 
         promises.push(p);
     }
 
     await Promise.all(promises);
-    const end = performance.now();
+    const endTotal = performance.now();
 
-    console.log(`\n>>> Tempo Total: ${(end - start).toFixed(4)} ms <<<`);
+    console.log(`\n==================================================`);
+    console.log(`>>> Tempo Total do Sistema: ${(endTotal - startTotal).toFixed(4)} ms <<<`);
+    console.log(`==================================================`);
     
-    const newPng = new PNG({ width, height });
-    newPng.data = outputBuffer;
-    fs.writeFileSync(OUTPUT_FILE, PNG.sync.write(newPng));
+    fs.writeFileSync(OUTPUT_FILE, PNG.sync.write({ width, height, data: outputBuffer }));
     console.log(`Salvo em: ${OUTPUT_FILE}`);
 }
 

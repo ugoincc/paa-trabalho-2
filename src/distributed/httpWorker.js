@@ -1,27 +1,25 @@
 // src/distributed/httpWorker.js
 const express = require("express");
 const bodyParser = require("body-parser");
+const { performance } = require("perf_hooks"); // Importante para medir tempo
 const { applyConvolution } = require("../functions/applyConvolution");
 
 const app = express();
 const PORT = 3000;
 
-// Aumenta limite do JSON para aceitar imagens grandes (50MB)
 app.use(bodyParser.json({ limit: "50mb" }));
 
 app.post("/processar", (req, res) => {
   try {
     const { image, width, height, kernel, kernelDivisor } = req.body;
 
-    // 1. Converter Base64 de volta para Buffer
     const srcBuffer = Buffer.from(image, "base64");
-    
-    // 2. Preparar buffer de saída
     const outputBuffer = Buffer.alloc(srcBuffer.length);
 
-    // 3. REAPROVEITA SUA FUNÇÃO DE CONVOLUÇÃO EXISTENTE!
-    // Nota: Como o worker recebe apenas um pedaço (slice) ou a imagem toda,
-    // a lógica é a mesma. Aqui assumimos que ele recebe o pedaço exato para processar.
+    // --- INÍCIO DA MEDIÇÃO DO WORKER ---
+    const startProc = performance.now();
+
+    // O processamento pesado acontece aqui
     applyConvolution(
         srcBuffer, 
         outputBuffer, 
@@ -31,10 +29,21 @@ app.post("/processar", (req, res) => {
         kernelDivisor || 1
     );
 
-    // 4. Devolve o resultado em Base64
+    // --- FIM DA MEDIÇÃO DO WORKER ---
+    const endProc = performance.now();
+    const duration = endProc - startProc;
+
     const resultBase64 = outputBuffer.toString("base64");
 
-    res.json({ image: resultBase64 });
+    // Retorna a imagem E as métricas de tempo
+    res.json({ 
+        image: resultBase64,
+        metrics: {
+            processTime: duration, // Tempo puro de CPU
+            workerStart: startProc,
+            workerEnd: endProc
+        }
+    });
 
   } catch (error) {
     console.error("Erro no Worker:", error.message);
