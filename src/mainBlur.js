@@ -1,59 +1,66 @@
 const fs = require("fs");
 const { PNG } = require("pngjs");
+const path = require("path");
 const { performance } = require("perf_hooks");
 const { generateGaussianKernel } = require("./functions/generateGaussKernel");
 const { applyConvolution } = require("./functions/applyConvolution");
 
-// ================= CONFIGURAÇÕES E KERNELS =================
-// Gere um kernel maior. Tente tamanhos como 15, 21 ou 31 para ver um blur forte.
 const kernelSize = 15;
-const sigma = 5; // Sigma controla a suavidade da curva
+const sigma = 5;
 const BIG_BLUR_KERNEL = generateGaussianKernel(kernelSize, sigma);
 
-//Arquivos de entrada e destino
-const INPUT_FILE = "imgs/inputs/teste.png"; // Coloque uma imagem PNG aqui
-const OUTPUT_FILE = "imgs/outputs/saidaBlurSequencial.png"; //Diretório de Saída
+const INPUT_FILE = path.join(__dirname, "imgs/inputs/italy.png");
+const OUTPUT_FILE = path.join(
+  __dirname,
+  "imgs/outputs/saidaBlurSequencial.png"
+);
 
-fs.createReadStream(INPUT_FILE)
-  .pipe(new PNG())
-  .on("parsed", function () {
-    console.log(`\nImagem carregada: ${INPUT_FILE}.`);
-    console.log(`Dimensões: ${this.width}x${this.height} pixels.`);
+function runSequentialBlur(silent = false) {
+  return new Promise((resolve, reject) => {
+    const readStream = fs.createReadStream(INPUT_FILE);
 
-    // Criar buffer para a nova imagem (evita leitura suja)
-    const outputBuffer = Buffer.alloc(this.data.length);
-    this.data.copy(outputBuffer); // Copia dados iniciais (alpha, etc)
+    readStream.on("error", (err) => reject(err));
 
-    console.log("Iniciando processamento...");
+    readStream
+      .pipe(new PNG())
+      .on("parsed", function () {
+        if (!silent) {
+          console.log(`\n[Sequencial] Imagem carregada: ${INPUT_FILE}`);
+          console.log(`Dimensões: ${this.width}x${this.height}`);
+        }
 
-    // --- INÍCIO DA MEDIÇÃO ---
-    const start = performance.now();
+        const outputBuffer = Buffer.alloc(this.data.length);
+        this.data.copy(outputBuffer);
 
-    // 1. Aplicar Desfoque
-    applyConvolution(
-      this.data,
-      outputBuffer,
-      this.width,
-      this.height,
-      BIG_BLUR_KERNEL,
-      1
-    );
+        const start = performance.now();
 
-    const end = performance.now();
-    // --- FIM DA MEDIÇÃO ---
+        applyConvolution(
+          this.data,
+          outputBuffer,
+          this.width,
+          this.height,
+          BIG_BLUR_KERNEL,
+          1
+        );
 
-    const duration = (end - start).toFixed(4);
+        const end = performance.now();
+        const duration = end - start;
 
-    console.log(`--------------------------------------------------`);
-    console.log(`Processamento Concluído.`);
-    console.log(`Operação: Blur (Desfoque)`);
-    console.log(`Modo: SEQUENCIAL`);
-    console.log(`Tempo de Execução: ${duration} ms`);
-    console.log(`--------------------------------------------------`);
+        if (!silent) {
+          console.log(`Tempo Sequencial (Blur): ${duration.toFixed(4)} ms`);
+        }
 
-    console.log(`Imagem resultante em: ${OUTPUT_FILE}\n`);
-
-    // Salvar resultado
-    this.data = outputBuffer;
-    this.pack().pipe(fs.createWriteStream(OUTPUT_FILE));
+        this.data = outputBuffer;
+        this.pack()
+          .pipe(fs.createWriteStream(OUTPUT_FILE))
+          .on("finish", () => resolve(duration));
+      })
+      .on("error", (err) => reject(err));
   });
+}
+
+if (require.main === module) {
+  runSequentialBlur().catch(console.error);
+}
+
+module.exports = { runSequentialBlur };

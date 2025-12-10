@@ -24,7 +24,7 @@ const GAUSS_KERNEL = generateGaussianKernel(kernelSize, sigma);
 const KERNEL_DIVISOR = 1;
 
 // Caminhos dos arquivos
-const INPUT_FILE = path.join(__dirname, "imgs/inputs/teste.png");
+const INPUT_FILE = path.join(__dirname, "imgs/inputs/italy.png");
 const OUTPUT_FILE = path.join(__dirname, "imgs/outputs/saidaParalela.png");
 const WORKER_PATH = path.join(__dirname, "workers", "ConvolutionWorker.js");
 

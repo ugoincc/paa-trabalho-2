@@ -23,7 +23,7 @@ const EDGE_DETECTION_KERNEL = [
 const KERNEL_DIVISOR = 1;
 
 // Ajuste os caminhos conforme sua estrutura de pastas
-const INPUT_FILE = path.join(__dirname, "imgs/inputs/teste.png");
+const INPUT_FILE = path.join(__dirname, "imgs/inputs/italy.png");
 const OUTPUT_FILE = path.join(__dirname, "imgs/outputs/saidaEdgeParalela.png");
 const WORKER_PATH = path.join(__dirname, "workers", "ConvolutionWorker.js");
 

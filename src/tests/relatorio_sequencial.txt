@@ -1,0 +1,86 @@
+RELATÓRIO DE PERFORMANCE SEQUENCIAL
+===================================
+=== RELATÓRIO: Blur Sequencial ===
+Data: 2025-12-09T23:29:25.743Z
+Config: 30 execuções, 2 warmups
+
+Run 1: 18308.2875 ms
+Run 2: 18366.2504 ms
+Run 3: 21004.3301 ms
+Run 4: 22471.1389 ms
+Run 5: 25807.4456 ms
+Run 6: 19457.9260 ms
+Run 7: 20486.6275 ms
+Run 8: 23825.1207 ms
+Run 9: 22744.3490 ms
+Run 10: 25507.2432 ms
+Run 11: 22540.9451 ms
+Run 12: 20520.4810 ms
+Run 13: 21426.3531 ms
+Run 14: 20000.8168 ms
+Run 15: 21013.6383 ms
+Run 16: 19869.3630 ms
+Run 17: 22757.5928 ms
+Run 18: 23278.6717 ms
+Run 19: 24044.4745 ms
+Run 20: 26127.0006 ms
+Run 21: 23161.2317 ms
+Run 22: 21222.9640 ms
+Run 23: 23880.1789 ms
+Run 24: 24956.3133 ms
+Run 25: 24430.5426 ms
+Run 26: 23935.6319 ms
+Run 27: 26041.6529 ms
+Run 28: 26617.8736 ms
+Run 29: 25662.6843 ms
+Run 30: 26528.4607 ms
+
+--- RESULTADOS FINAIS (Blur Sequencial) ---
+Média:         22866.5197 ms
+Desvio Padrão: ±2423.2182 ms
+Mínimo:        18308.2875 ms
+Máximo:        26617.8736 ms
+-----------------------------------
+
+=== RELATÓRIO: Edge Detection Sequencial ===
+Data: 2025-12-09T23:43:10.689Z
+Config: 30 execuções, 2 warmups
+
+Run 1: 1366.9466 ms
+Run 2: 1197.6329 ms
+Run 3: 1360.5895 ms
+Run 4: 1372.7104 ms
+Run 5: 1535.6289 ms
+Run 6: 1333.1893 ms
+Run 7: 1261.3252 ms
+Run 8: 1507.7585 ms
+Run 9: 1349.6290 ms
+Run 10: 1584.0169 ms
+Run 11: 1418.5308 ms
+Run 12: 1294.3351 ms
+Run 13: 1482.9657 ms
+Run 14: 1751.2192 ms
+Run 15: 1268.2528 ms
+Run 16: 1386.6217 ms
+Run 17: 1332.0159 ms
+Run 18: 1343.4873 ms
+Run 19: 1373.2445 ms
+Run 20: 1469.2301 ms
+Run 21: 1439.6165 ms
+Run 22: 1472.3361 ms
+Run 23: 1412.8315 ms
+Run 24: 1447.3156 ms
+Run 25: 1351.7037 ms
+Run 26: 1382.8456 ms
+Run 27: 1355.8323 ms
+Run 28: 1433.7279 ms
+Run 29: 1330.2969 ms
+Run 30: 1463.7548 ms
+
+--- RESULTADOS FINAIS (Edge Detection Sequencial) ---
+Média:         1402.6530 ms
+Desvio Padrão: ±104.9895 ms
+Mínimo:        1197.6329 ms
+Máximo:        1751.2192 ms
+-----------------------------------
+

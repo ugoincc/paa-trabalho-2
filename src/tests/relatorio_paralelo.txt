@@ -1,0 +1,86 @@
+RELATÓRIO DE PERFORMANCE PARALELO (WORKER THREADS)
+===================================================
+=== RELATÓRIO: Blur Paralelo ===
+Data: 2025-12-10T00:17:39.421Z
+Config: 30 execuções, 2 warmups
+
+Run 1: 7062.4452 ms
+Run 2: 6583.5339 ms
+Run 3: 6550.3595 ms
+Run 4: 6794.9049 ms
+Run 5: 6792.5496 ms
+Run 6: 7092.6082 ms
+Run 7: 7586.0073 ms
+Run 8: 6734.7142 ms
+Run 9: 7356.4176 ms
+Run 10: 7421.2371 ms
+Run 11: 7499.2757 ms
+Run 12: 8349.8998 ms
+Run 13: 7976.9216 ms
+Run 14: 7611.0976 ms
+Run 15: 7209.0418 ms
+Run 16: 7401.0835 ms
+Run 17: 7297.3126 ms
+Run 18: 7506.7002 ms
+Run 19: 7290.4545 ms
+Run 20: 7084.6230 ms
+Run 21: 6790.0509 ms
+Run 22: 7711.6561 ms
+Run 23: 8225.4664 ms
+Run 24: 7971.9397 ms
+Run 25: 7322.7683 ms
+Run 26: 8113.2432 ms
+Run 27: 6972.4383 ms
+Run 28: 7467.8244 ms
+Run 29: 6966.1527 ms
+Run 30: 7414.4662 ms
+
+--- RESULTADOS FINAIS (Blur Paralelo) ---
+Média:         7338.5731 ms
+Desvio Padrão: ±466.4067 ms
+Mínimo:        6550.3595 ms
+Máximo:        8349.8998 ms
+-----------------------------------
+
+=== RELATÓRIO: Edge Detection Paralelo ===
+Data: 2025-12-10T00:22:52.580Z
+Config: 30 execuções, 2 warmups
+
+Run 1: 1186.9860 ms
+Run 2: 1247.6223 ms
+Run 3: 1107.0333 ms
+Run 4: 1148.2547 ms
+Run 5: 1233.8892 ms
+Run 6: 1157.7775 ms
+Run 7: 1307.4889 ms
+Run 8: 1079.0828 ms
+Run 9: 1344.1886 ms
+Run 10: 1159.9688 ms
+Run 11: 1782.3844 ms
+Run 12: 1300.4671 ms
+Run 13: 1286.2661 ms
+Run 14: 1473.7653 ms
+Run 15: 1341.8635 ms
+Run 16: 1182.5312 ms
+Run 17: 1190.9814 ms
+Run 18: 1347.4156 ms
+Run 19: 1129.2312 ms
+Run 20: 1027.3837 ms
+Run 21: 1317.0345 ms
+Run 22: 1337.4749 ms
+Run 23: 1299.6333 ms
+Run 24: 1516.3466 ms
+Run 25: 1225.4115 ms
+Run 26: 1180.4711 ms
+Run 27: 1384.4075 ms
+Run 28: 1276.8788 ms
+Run 29: 1061.3247 ms
+Run 30: 1075.5946 ms
+
+--- RESULTADOS FINAIS (Edge Detection Paralelo) ---
+Média:         1256.9720 ms
+Desvio Padrão: ±152.1878 ms
+Mínimo:        1027.3837 ms
+Máximo:        1782.3844 ms
+-----------------------------------
+
