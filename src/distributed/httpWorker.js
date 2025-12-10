@@ -7,7 +7,7 @@ const { applyConvolution } = require("../functions/applyConvolution");
 const app = express();
 const PORT = 3000;
 
-app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.json({ limit: "200mb" }));
 
 app.post("/processar", (req, res) => {
   try {
